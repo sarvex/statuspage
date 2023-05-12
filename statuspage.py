@@ -169,11 +169,7 @@ def run_update(name, token, org):
 def run_create(name, token, systems, org):
     gh = Github(token)
 
-    if org:
-        entity = gh.get_organization(org)
-    else:
-        entity = gh.get_user()
-
+    entity = gh.get_organization(org) if org else gh.get_user()
     # create the repo
     repo = entity.create_repo(name=name)
 
@@ -208,10 +204,10 @@ def run_create(name, token, systems, org):
     for template in tqdm(TEMPLATES, desc="Adding template files"):
         with open(os.path.join(ROOT, "template", template), "r") as f:
             repo.create_file(
-                path="/" + template,
+                path=f"/{template}",
                 message="initial",
                 content=f.read(),
-                branch="gh-pages"
+                branch="gh-pages",
             )
 
     # set the gh-pages branch to be the default branch
@@ -234,8 +230,11 @@ def run_create(name, token, systems, org):
     click.echo("# IMPORTANT: Whenever you add or close an issue you have to run the update    #")
     click.echo("# command to show the changes reflected on your status page.                  #")
     click.echo("# Here's a one-off command for this repo to safe it somewhere safe:           #")
-    click.echo("# statuspage update --name={name} --token={token} {org}".format(
-            name=name, token=token, org="--org=" + entity.login if org else ""))
+    click.echo(
+        "# statuspage update --name={name} --token={token} {org}".format(
+            name=name, token=token, org=f"--org={entity.login}" if org else ""
+        )
+    )
     click.echo("###############################################################################")
 
 
@@ -247,10 +246,14 @@ def iter_systems(labels):
 
 def get_severity(labels):
     label_map = dict(COLORED_LABELS)
-    for label in labels:
-        if label.color in label_map:
-            return label_map[label.color]
-    return None
+    return next(
+        (
+            label_map[label.color]
+            for label in labels
+            if label.color in label_map
+        ),
+        None,
+    )
 
 
 if __name__ == '__main__':  # pragma: no cover
